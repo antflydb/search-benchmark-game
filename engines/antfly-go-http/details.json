@@ -1,0 +1,7 @@
+[
+  "Written in Go.",
+  "Full antfly-go server via HTTP API.",
+  "Bleve v2 full-text search (BM25).",
+  "Multi-Raft distributed architecture.",
+  "Includes HTTP + JSON serialization overhead."
+]

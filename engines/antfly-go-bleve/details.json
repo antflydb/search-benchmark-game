@@ -1,0 +1,8 @@
+[
+  "Written in Go.",
+  "Uses antfly's custom Bleve v2 fork (v2.5.8-antfly002).",
+  "Scorch storage backend.",
+  "BM25 scoring.",
+  "Embedded mode (no server overhead).",
+  "Unicode tokenizer + lowercase (no stemming, no stop words)."
+]
