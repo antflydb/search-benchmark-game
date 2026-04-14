@@ -1,0 +1,7 @@
+[
+  "Written in Zig.",
+  "Vellum FST-based inverted index.",
+  "BM25 scoring with k1=1.2, b=0.75.",
+  "Block-max WAND for top-k queries.",
+  "Embedded mode (no server overhead)."
+]
