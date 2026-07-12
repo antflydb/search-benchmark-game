@@ -4,6 +4,7 @@ from os import path
 import time
 import json
 import random
+import statistics
 from collections import defaultdict
 
 COMMANDS = os.environ['COMMANDS'].split(' ')
@@ -32,6 +33,15 @@ class SearchClient:
         cnt = int(recv)
         return cnt
 
+    def query_json(self, query, command):
+        query_line = "%s\t%s\n" % (command, query)
+        self.process.stdin.write(query_line.encode("utf-8"))
+        self.process.stdin.flush()
+        recv = self.process.stdout.readline().strip()
+        if recv == b"UNSUPPORTED":
+            return None
+        return json.loads(recv)
+
     def close(self):
         self.process.stdin.close()
         self.process.stdout.close()
@@ -50,9 +60,105 @@ class Query(object):
         self.tags = tags
 
 def read_queries(query_path):
+    selected_tags = set(os.environ.get("QUERY_TAGS", "").replace(",", " ").split())
     for q in open(query_path):
         c = json.loads(q)
-        yield Query(c["query"], c["tags"])
+        tags = c["tags"]
+        if selected_tags and not selected_tags.intersection(tags):
+            continue
+        yield Query(c["query"], tags)
+
+
+def validate_results(queries, engines, limit=10):
+    command = "VALIDATE_TOP_%d" % limit
+    results = {}
+    for engine in engines:
+        client = SearchClient(engine)
+        engine_results = {}
+        try:
+            for query in queries:
+                payload = client.query_json(query.query, command)
+                if payload is None:
+                    raise RuntimeError("%s does not support %s" % (engine, command))
+                ids = payload.get("ids") if isinstance(payload, dict) else None
+                count = payload.get("count") if isinstance(payload, dict) else None
+                if not isinstance(ids, list) or len(ids) != len(set(ids)) or not isinstance(count, int):
+                    raise RuntimeError("invalid validation result from %s for %r" % (engine, query.query))
+                engine_results[query.query] = {
+                    "ids": [str(doc_id) for doc_id in ids],
+                    "count": count,
+                }
+        finally:
+            client.close()
+        results[engine] = engine_results
+
+    reference = engines[0]
+    comparisons = {}
+    for engine in engines[1:]:
+        overlaps = []
+        by_tag = defaultdict(list)
+        count_matches_by_tag = defaultdict(list)
+        count_ratios_by_tag = defaultdict(list)
+        exact = 0
+        exact_counts = 0
+        mismatch_examples = []
+        for query in queries:
+            expected_result = results[reference][query.query]
+            actual_result = results[engine][query.query]
+            expected = expected_result["ids"]
+            actual = actual_result["ids"]
+            if expected == actual:
+                exact += 1
+            if expected_result["count"] == actual_result["count"]:
+                exact_counts += 1
+                count_matches = 1.0
+            else:
+                count_matches = 0.0
+                if len(mismatch_examples) < 10:
+                    mismatch_examples.append({
+                        "query": query.query,
+                        "tags": query.tags,
+                        "reference_count": expected_result["count"],
+                        "engine_count": actual_result["count"],
+                    })
+            denominator = max(1, min(limit, len(expected), len(actual)))
+            overlap = len(set(expected) & set(actual)) / denominator
+            overlaps.append(overlap)
+            for tag in query.tags:
+                by_tag[tag].append(overlap)
+                count_matches_by_tag[tag].append(count_matches)
+                if expected_result["count"] > 0:
+                    count_ratios_by_tag[tag].append(actual_result["count"] / expected_result["count"])
+        comparisons[engine] = {
+            "reference": reference,
+            "queries": len(queries),
+            "exact_rankings": exact,
+            "exact_match_counts": exact_counts,
+            "count_mismatch_examples": mismatch_examples,
+            "mean_overlap_at_%d" % limit: statistics.fmean(overlaps),
+            "median_overlap_at_%d" % limit: statistics.median(overlaps),
+            "by_primary_tag": {
+                tag: {
+                    "mean_overlap_at_%d" % limit: statistics.fmean(values),
+                    "exact_match_count_rate": statistics.fmean(count_matches_by_tag[tag]),
+                    "median_engine_to_reference_count_ratio": (
+                        statistics.median(count_ratios_by_tag[tag])
+                        if count_ratios_by_tag[tag]
+                        else None
+                    ),
+                }
+                for tag, values in sorted(by_tag.items())
+                if tag in {"term", "intersection", "phrase", "union"}
+            },
+        }
+    report = {"command": command, "engines": engines, "comparisons": comparisons}
+    with open("validation.json", "w") as validation_file:
+        json.dump(report, validation_file, indent=2, sort_keys=True)
+    print("VALIDATION " + json.dumps(report, sort_keys=True))
+    minimum_overlap = float(os.environ.get("MIN_VALIDATION_OVERLAP", "0.0"))
+    for comparison in comparisons.values():
+        if comparison["mean_overlap_at_%d" % limit] < minimum_overlap:
+            raise RuntimeError("validation overlap below MIN_VALIDATION_OVERLAP")
 
 # Print progress, borrowed from https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
 def printProgressBar (progress, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
@@ -84,6 +190,11 @@ if __name__ == "__main__":
     query_path = sys.argv[1]
     engines = sys.argv[2:]
     queries = list(read_queries(query_path))
+
+    if os.environ.get("VALIDATE_RESULTS", "1") != "0" and len(engines) > 1:
+        validate_results(queries, engines, int(os.environ.get("VALIDATE_TOP_K", "10")))
+        if os.environ.get("VALIDATE_ONLY", "0") == "1":
+            raise SystemExit(0)
 
     details = {}
     for engine in engines:

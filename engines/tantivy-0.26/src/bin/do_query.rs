@@ -3,6 +3,7 @@ extern crate tantivy;
 
 use tantivy::collector::{Collector, Count, SegmentCollector, TopDocs};
 use tantivy::query::{QueryParser, Weight};
+use tantivy::schema::Value;
 use tantivy::tokenizer::TokenizerManager;
 use tantivy::{DocId, Index, Order, Score, SegmentReader, TERMINATED};
 
@@ -140,6 +141,7 @@ impl Collector for UnoptimizedCount {
 fn main_inner(index_dir: &Path) -> tantivy::Result<()> {
     let index = Index::open_in_dir(index_dir).expect("failed to open index");
     let text_field = index.schema().get_field("text").expect("no all field?!");
+    let id_field = index.schema().get_field("id").expect("no id field?!");
     let query_parser = QueryParser::new(
         index.schema(),
         vec![text_field],
@@ -165,6 +167,22 @@ fn main_inner(index_dir: &Path) -> tantivy::Result<()> {
                 continue;
             }
         };
+        if let Some(limit) = command.strip_prefix("VALIDATE_TOP_") {
+            let limit: usize = limit.parse().expect("invalid validation limit");
+            let (top_docs, count) = searcher.search(
+                &query,
+                &(TopDocs::with_limit(limit).order_by_score(), Count),
+            )?;
+            let mut ids: Vec<String> = Vec::with_capacity(top_docs.len());
+            for (_score, address) in top_docs {
+                let doc = searcher.doc::<tantivy::TantivyDocument>(address)?;
+                if let Some(value) = doc.get_first(id_field).and_then(|value| value.as_str()) {
+                    ids.push(value.to_string());
+                }
+            }
+            println!("{}", serde_json::json!({"ids": ids, "count": count}));
+            continue;
+        }
         let count_result: tantivy::Result<usize> = match command {
             "COUNT" => {
                 query.count(&searcher)

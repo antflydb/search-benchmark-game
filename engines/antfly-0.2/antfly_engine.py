@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
 from typing import Any
+from urllib.parse import urlsplit
 
 
 def env(name: str, default: str) -> str:
@@ -20,35 +20,69 @@ class AntflyClient:
     def __init__(self, base_url: str, table: str) -> None:
         self.base_url = base_url.rstrip("/")
         self.table = table
+        parsed = urlsplit(self.base_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError(f"invalid ANTFLY_URL: {base_url}")
+        self._connection_type = (
+            http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+        )
+        self._host = parsed.hostname
+        self._port = parsed.port
+        self._base_path = parsed.path.rstrip("/")
+        self._connection: http.client.HTTPConnection | None = None
         self.api_root = env("ANTFLY_API_ROOT", "").rstrip("/") or self.detect_api_root()
         self.index_name = env("ANTFLY_TEXT_INDEX", "text")
+
+    def _connect(self) -> http.client.HTTPConnection:
+        if self._connection is None:
+            self._connection = self._connection_type(
+                self._host,
+                self._port,
+                timeout=int(env("ANTFLY_REQUEST_TIMEOUT", "300")),
+            )
+        return self._connection
+
+    def _close_connection(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
     def detect_api_root(self) -> str:
         for root in ("/db/v1", "/api/v1"):
             try:
-                req = urllib.request.Request(f"{self.base_url}{root}/tables", method="GET")
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    content_type = resp.headers.get("content-type", "")
-                    if resp.status < 500 and "json" in content_type:
-                        return root
+                response = self.request("GET", f"{root}/tables")
+                if response is not None:
+                    return root
             except Exception:
                 continue
         return "/db/v1"
 
     def request(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
-        timeout = int(env("ANTFLY_REQUEST_TIMEOUT", "300"))
         data = None if body is None else json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(
-            f"{self.base_url}{path}",
-            data=data,
-            method=method,
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                raw = resp.read()
-        except urllib.error.HTTPError as exc:
-            raise RuntimeError(f"{method} {path} failed: {exc.code} {exc.read().decode('utf-8', 'replace')}") from exc
+        headers = {"Accept": "application/json"}
+        if data is not None:
+            headers["Content-Type"] = "application/json"
+        request_path = f"{self._base_path}{path}"
+        raw = b""
+        status = 0
+        reason = ""
+        for attempt in range(2):
+            try:
+                connection = self._connect()
+                connection.request(method, request_path, body=data, headers=headers)
+                response = connection.getresponse()
+                status = response.status
+                reason = response.reason
+                raw = response.read()
+                break
+            except (BrokenPipeError, ConnectionResetError, http.client.RemoteDisconnected):
+                self._close_connection()
+                if attempt:
+                    raise
+        if status >= 400:
+            raise RuntimeError(
+                f"{method} {path} failed: {status} {reason} {raw.decode('utf-8', 'replace')}"
+            )
         if not raw:
             return None
         return json.loads(raw)
@@ -100,6 +134,10 @@ class AntflyClient:
         full_text_search = translate_query(query, text_field)
         body = {
             "limit": limit,
+            # Search Benchmark Game measures top-k collection, not stored-document
+            # retrieval. An explicit empty projection keeps Antfly from returning
+            # the full Wikipedia body for every hit.
+            "fields": [],
             "full_text_search": full_text_search,
         }
         if self.api_root == "/api/v1":
@@ -112,11 +150,18 @@ def translate_query(query: str, field: str) -> dict[str, Any]:
     query = query.strip()
     if len(query) >= 2 and query[0] == '"' and query[-1] == '"':
         return {"match_phrase": {"field": field, "text": query[1:-1]}}
-    # Search Benchmark Game uses leading plus signs for required terms. Antfly's
-    # structured match query is the current API surface; remove Lucene markers
-    # and let Antfly tokenize the field text.
-    text = " ".join(part.lstrip("+") for part in query.split())
-    return {"match": {"field": field, "text": text}}
+    terms = query.split()
+    if len(terms) == 1:
+        return {"match": {"field": field, "text": terms[0].lstrip("+")}}
+    clauses = [
+        {"match": {"field": field, "text": term.lstrip("+")}}
+        for term in terms
+    ]
+    # Search Benchmark Game encodes required-term intersections with leading
+    # plus signs and bare multi-term queries as unions.
+    if all(term.startswith("+") for term in terms):
+        return {"conjuncts": clauses}
+    return {"disjuncts": clauses}
 
 
 def field_qualify_query(query: str, field: str) -> str:
@@ -141,6 +186,8 @@ def extract_total(resp: Any) -> int:
             total = hits.get("total")
             if isinstance(total, int):
                 return total
+            if isinstance(total, dict) and isinstance(total.get("value"), int):
+                return total["value"]
             nested = hits.get("hits")
             if isinstance(nested, list):
                 return len(nested)
@@ -148,6 +195,36 @@ def extract_total(resp: Any) -> int:
         if isinstance(responses, list) and responses:
             return extract_total(responses[0])
     return 0
+
+
+def extract_hits(resp: Any) -> list[dict[str, Any]]:
+    if not isinstance(resp, dict):
+        return []
+    candidates = []
+    responses = resp.get("responses")
+    if isinstance(responses, list) and responses:
+        candidates.append(responses[0])
+    candidates.append(resp)
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        hits = candidate.get("hits")
+        if isinstance(hits, dict) and isinstance(hits.get("hits"), list):
+            return [hit for hit in hits["hits"] if isinstance(hit, dict)]
+        if isinstance(hits, list):
+            return [hit for hit in hits if isinstance(hit, dict)]
+    return []
+
+
+def validation_result(resp: Any) -> dict[str, Any]:
+    hits = extract_hits(resp)
+    ids = []
+    for hit in hits:
+        source = hit.get("_source") if isinstance(hit.get("_source"), dict) else {}
+        doc_id = hit.get("_id") or hit.get("id") or source.get("id")
+        if doc_id is not None:
+            ids.append(str(doc_id))
+    return {"ids": ids, "count": extract_total(resp)}
 
 
 def parse_command(line: str) -> tuple[str, str]:
@@ -210,6 +287,14 @@ def serve_stdin(client: AntflyClient) -> None:
         if not line.strip():
             continue
         command, query = parse_command(line)
+        if command.startswith("VALIDATE_TOP_"):
+            try:
+                limit = int(command.removeprefix("VALIDATE_TOP_"))
+            except ValueError:
+                print("UNSUPPORTED", flush=True)
+                continue
+            print(json.dumps(validation_result(client.search(query, limit)), separators=(",", ":")), flush=True)
+            continue
         limit = command_to_limit(command)
         if limit is None:
             print("UNSUPPORTED", flush=True)
@@ -248,7 +333,18 @@ def self_test() -> int:
             return 1
     structured = {
         "hello": {"match": {"field": "text", "text": "hello"}},
-        "+griffith +observatory": {"match": {"field": "text", "text": "griffith observatory"}},
+        "+griffith +observatory": {
+            "conjuncts": [
+                {"match": {"field": "text", "text": "griffith"}},
+                {"match": {"field": "text", "text": "observatory"}},
+            ]
+        },
+        "griffith observatory": {
+            "disjuncts": [
+                {"match": {"field": "text", "text": "griffith"}},
+                {"match": {"field": "text", "text": "observatory"}},
+            ]
+        },
         '"griffith observatory"': {"match_phrase": {"field": "text", "text": "griffith observatory"}},
     }
     for raw, expected in structured.items():
