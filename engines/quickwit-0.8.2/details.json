@@ -1,0 +1,6 @@
+[
+  "Quickwit 0.8.2, self-hosted as a single Docker node on the benchmark host.",
+  "The index uses one positional, fieldnorm-enabled text field and stores only the external document ID.",
+  "Timed searches sort by BM25 score and return ranked document IDs over persistent HTTP connections.",
+  "Quickwit's default lowercase tokenizer has no configurable stop-word filter, so analyzer parity with Antfly is not exact."
+]

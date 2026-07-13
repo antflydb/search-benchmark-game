@@ -19,6 +19,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 ENGINES_DIR = ROOT / "engines"
+RESULTS_PATH = Path(os.environ.get("RESULTS_PATH", ROOT / "results.json"))
+VALIDATION_PATH = Path(os.environ.get("VALIDATION_PATH", ROOT / "validation.json"))
 COMMANDS = os.environ.get("COMMANDS", "TOP_10 TOP_100").split()
 PRIMARY_TAGS = ("term", "union", "intersection", "phrase")
 WARMUP_TIME = float(os.environ.get("WARMUP_TIME", "5"))
@@ -173,7 +175,7 @@ def validate_results(queries: list[Query], engines: list[str], capabilities: dic
             "exact_match_counts": exact_counts,
         }
     report = {"command": command, "engines": engines, "comparisons": comparisons}
-    (ROOT / "validation.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    VALIDATION_PATH.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return report
 
 
@@ -249,6 +251,7 @@ def stop_engine(engine: str) -> None:
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         raise SystemExit("usage: client.py QUERY_FILE ENGINE...")
+    run_started = time.monotonic()
     random.seed(2)
     queries = read_queries(argv[0])
     engines = argv[1:]
@@ -307,13 +310,14 @@ def main(argv: list[str]) -> int:
             "iterations": NUM_ITER,
             "concurrency_levels": CONCURRENCY_LEVELS,
             "query_classes": list(PRIMARY_TAGS),
+            "driver_wall_seconds": time.monotonic() - run_started,
         },
         "details": details,
         "capabilities": capabilities,
         "validation": validation,
         "results": results,
     }
-    (ROOT / "results.json").write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+    RESULTS_PATH.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
     return 0
 
 

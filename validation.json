@@ -67,6 +67,33 @@
       "exact_match_counts": 703,
       "reference": "antfly-0.2"
     },
+    "quickwit-0.8.2": {
+      "classes": {
+        "intersection": {
+          "mean_overlap_at_10": 0.6513399470899471,
+          "median_overlap_at_10": 0.8,
+          "queries": 300
+        },
+        "phrase": {
+          "mean_overlap_at_10": 0.5731164021164021,
+          "median_overlap_at_10": 0.8,
+          "queries": 300
+        },
+        "term": {
+          "mean_overlap_at_10": 0.0,
+          "median_overlap_at_10": 0.0,
+          "queries": 1
+        },
+        "union": {
+          "mean_overlap_at_10": 0.706312292358804,
+          "median_overlap_at_10": 0.8,
+          "queries": 301
+        }
+      },
+      "comparable_exact_counts": 902,
+      "exact_match_counts": 241,
+      "reference": "antfly-0.2"
+    },
     "weaviate-1.38.2": {
       "classes": {
         "intersection": {
@@ -96,6 +123,7 @@
     "weaviate-1.38.2",
     "postgresql-16",
     "milvus-2.5.8",
-    "chroma-self-hosted"
+    "chroma-self-hosted",
+    "quickwit-0.8.2"
   ]
 }
