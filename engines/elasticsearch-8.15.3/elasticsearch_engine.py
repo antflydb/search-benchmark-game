@@ -94,11 +94,23 @@ class ElasticsearchClient:
                     "number_of_shards": 1,
                     "number_of_replicas": 0,
                     "refresh_interval": "-1",
+                    "analysis": {
+                        "analyzer": {
+                            "antfly_standard": {
+                                "type": "custom",
+                                "tokenizer": "standard",
+                                "filter": ["lowercase", "antfly_english_stop"],
+                            }
+                        },
+                        "filter": {
+                            "antfly_english_stop": {"type": "stop", "stopwords": "_english_"}
+                        },
+                    },
                 },
                 "mappings": {
                     "properties": {
                         "id": {"type": "keyword", "store": True},
-                        "text": {"type": "text", "analyzer": "standard"},
+                        "text": {"type": "text", "analyzer": "antfly_standard"},
                         "sort_field": {"type": "long"},
                     }
                 },

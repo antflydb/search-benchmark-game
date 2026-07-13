@@ -3,7 +3,6 @@ extern crate tantivy;
 
 use tantivy::collector::{Collector, Count, SegmentCollector, TopDocs};
 use tantivy::query::{QueryParser, Weight};
-use tantivy::schema::Value;
 use tantivy::tokenizer::TokenizerManager;
 use tantivy::{DocId, Index, Order, Score, SegmentReader, TERMINATED};
 
@@ -141,7 +140,6 @@ impl Collector for UnoptimizedCount {
 fn main_inner(index_dir: &Path) -> tantivy::Result<()> {
     let index = Index::open_in_dir(index_dir).expect("failed to open index");
     let text_field = index.schema().get_field("text").expect("no all field?!");
-    let id_field = index.schema().get_field("id").expect("no id field?!");
     let query_parser = QueryParser::new(
         index.schema(),
         vec![text_field],
@@ -160,103 +158,80 @@ fn main_inner(index_dir: &Path) -> tantivy::Result<()> {
             "Expected a line in the format <COMMAND> query."
         );
         let command = fields[0];
-        let query = match query_parser.parse_query(fields[1]) {
-            Ok(query) => query,
-            Err(_) => {
-                println!("0");
-                continue;
-            }
-        };
-        if let Some(limit) = command.strip_prefix("VALIDATE_TOP_") {
-            let limit: usize = limit.parse().expect("invalid validation limit");
-            let (top_docs, count) = searcher.search(
-                &query,
-                &(TopDocs::with_limit(limit).order_by_score(), Count),
-            )?;
-            let mut ids: Vec<String> = Vec::with_capacity(top_docs.len());
-            for (_score, address) in top_docs {
-                let doc = searcher.doc::<tantivy::TantivyDocument>(address)?;
-                if let Some(value) = doc.get_first(id_field).and_then(|value| value.as_str()) {
-                    ids.push(value.to_string());
-                }
-            }
-            println!("{}", serde_json::json!({"ids": ids, "count": count}));
-            continue;
-        }
-        let count_result: tantivy::Result<usize> = match command {
+        let query = query_parser.parse_query(fields[1])?;
+        let count;
+        match command {
             "COUNT" => {
-                query.count(&searcher)
+                count = query.count(&searcher)?;
             }
             "UNOPTIMIZED_COUNT" => {
-                searcher.search(&query, &UnoptimizedCount).map(|count| count as usize)
+                count = searcher.search(&query, &UnoptimizedCount)? as usize;
             }
             "TOP_10" => {
-                searcher.search(&query, &TopDocs::with_limit(10).order_by_score()).map(|_| 1)
+                let _top_k = searcher.search(&query, &TopDocs::with_limit(10).order_by_score())?;
+                count = 1;
             }
             "TOP_100" => {
-                searcher.search(&query, &TopDocs::with_limit(100).order_by_score()).map(|_| 1)
+                let _top_k = searcher.search(&query, &TopDocs::with_limit(100).order_by_score())?;
+                count = 1;
             }
             "TOP_1000" => {
-                searcher.search(&query, &TopDocs::with_limit(1000).order_by_score()).map(|_| 1)
+                let _top_k =
+                    searcher.search(&query, &TopDocs::with_limit(1000).order_by_score())?;
+                count = 1;
             }
             "TOP_1_COUNT" => {
-                searcher
-                    .search(&query, &(TopDocs::with_limit(1).order_by_score(), Count))
-                    .map(|(_top_k, count)| count)
+                let (_top_k, count_) =
+                    searcher.search(&query, &(TopDocs::with_limit(1).order_by_score(), Count))?;
+                count = count_;
             }
             "TOP_5_COUNT" => {
-                searcher
-                    .search(&query, &(TopDocs::with_limit(5).order_by_score(), Count))
-                    .map(|(_top_k, count)| count)
+                let (_top_k, count_) =
+                    searcher.search(&query, &(TopDocs::with_limit(5).order_by_score(), Count))?;
+                count = count_;
             }
             "TOP_10_COUNT" => {
-                searcher
-                    .search(&query, &(TopDocs::with_limit(10).order_by_score(), Count))
-                    .map(|(_top_k, count)| count)
+                let (_top_k, count_) =
+                    searcher.search(&query, &(TopDocs::with_limit(10).order_by_score(), Count))?;
+                count = count_;
             }
             "TOP_100_COUNT" => {
-                searcher
-                    .search(&query, &(TopDocs::with_limit(100).order_by_score(), Count))
-                    .map(|(_top_k, count)| count)
+                let (_top_k, count_) =
+                    searcher.search(&query, &(TopDocs::with_limit(100).order_by_score(), Count))?;
+                count = count_;
             }
             "TOP_1000_COUNT" => {
-                searcher
-                    .search(&query, &(TopDocs::with_limit(1000).order_by_score(), Count))
-                    .map(|(_top_k, count)| count)
+                let (_top_k, count_) = searcher
+                    .search(&query, &(TopDocs::with_limit(1000).order_by_score(), Count))?;
+                count = count_;
             }
             "TOP_10_FF" => {
-                searcher
-                    .search(&query, &TopDocs::with_limit(10).order_by_fast_field::<u64>("sort_field", Order::Desc))
-                    .map(|_| 1)
+                let _top_k = searcher.search(&query, &TopDocs::with_limit(10).order_by_fast_field::<u64>("sort_field", Order::Desc))?;
+                count = 1;
             }
             "TOP_100_FF" => {
-                searcher
-                    .search(&query, &TopDocs::with_limit(100).order_by_fast_field::<u64>("sort_field", Order::Desc))
-                    .map(|_| 1)
+                let _top_k = searcher.search(&query, &TopDocs::with_limit(100).order_by_fast_field::<u64>("sort_field", Order::Desc))?;
+                count = 1;
             }
             "TOP_1000_FF" => {
-                searcher
-                    .search(&query, &TopDocs::with_limit(1000).order_by_fast_field::<u64>("sort_field", Order::Desc))
-                    .map(|_| 1)
+                let _top_k = searcher.search(&query, &TopDocs::with_limit(1000).order_by_fast_field::<u64>("sort_field", Order::Desc))?;
+                count = 1;
             }
             "DEBUG_TOP_10" => {
-                let debug_result = query
-                    .weight(tantivy::query::EnableScoring::enabled_from_searcher(&searcher))
-                    .and_then(|weight| {
-                        for reader in searcher.segment_readers() {
-                            let _checkpoints_left = checkpoints_no_pruning(&*weight, reader, 10)?;
-                            let _checkpoints_right = checkpoints_pruning(&*weight, reader, 10)?;
-                        }
-                        Ok(())
-                    });
-                debug_result.map(|_| 0)
+                let weight = query.weight(tantivy::query::EnableScoring::enabled_from_searcher(
+                    &searcher,
+                ))?;
+                for reader in searcher.segment_readers() {
+                    let checkpoints_left = checkpoints_no_pruning(&*weight, reader, 10)?;
+                    let checkpoints_right = checkpoints_pruning(&*weight, reader, 10)?;
+                }
+                count = 0;
             }
             _ => {
                 println!("UNSUPPORTED");
                 continue;
             }
-        };
-        let count = count_result.unwrap_or(0);
+        }
         println!("{}", count);
     }
 

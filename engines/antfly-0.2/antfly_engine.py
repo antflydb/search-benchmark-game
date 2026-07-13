@@ -54,6 +54,7 @@ class AntflyClient:
                 if response is not None:
                     return root
             except Exception:
+                self._close_connection()
                 continue
         return "/db/v1"
 
@@ -75,7 +76,13 @@ class AntflyClient:
                 reason = response.reason
                 raw = response.read()
                 break
-            except (BrokenPipeError, ConnectionResetError, http.client.RemoteDisconnected):
+            except (
+                BrokenPipeError,
+                ConnectionResetError,
+                http.client.CannotSendRequest,
+                http.client.RemoteDisconnected,
+                http.client.ResponseNotReady,
+            ):
                 self._close_connection()
                 if attempt:
                     raise

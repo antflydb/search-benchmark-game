@@ -1,0 +1,6 @@
+[
+  "Milvus 2.5.8 is retained visibly but is not timed on this unchanged corpus.",
+  "Milvus BM25 requires raw text in a VARCHAR input field with a 65,535-byte maximum.",
+  "Twenty documents in the 250k corpus exceed that limit; the maximum is 202,798 bytes.",
+  "Truncating only Milvus would change the benchmark workload, so every query class is marked unsupported."
+]

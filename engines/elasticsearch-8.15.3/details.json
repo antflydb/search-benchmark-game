@@ -1,7 +1,7 @@
 [
   "Elasticsearch 8.15.3, self-hosted in Docker on the benchmark host.",
   "Single node, one primary shard, zero replicas, 1 GiB fixed JVM heap.",
-  "Text uses Elasticsearch's standard analyzer with stemming and stop-word removal disabled.",
+  "Text uses the standard tokenizer, lowercase filter, and Elasticsearch's English stop-word list to approximate Antfly's fixed Bleve analyzer.",
   "Timed TOP_K requests disable _source, stored fields, and exact total-hit counting.",
   "The completed index is refreshed and force-merged to one segment before queries."
 ]

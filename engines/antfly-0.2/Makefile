@@ -1,7 +1,7 @@
 PYTHON ?= python3
 CORPUS ?= corpus.jsonl
 
-.PHONY: clean compile index serve self-test
+.PHONY: clean compile index serve self-test stop
 
 clean:
 	rm -rf __pycache__
@@ -17,3 +17,6 @@ serve:
 
 self-test:
 	@$(PYTHON) antfly_engine.py --self-test
+
+stop:
+	@true

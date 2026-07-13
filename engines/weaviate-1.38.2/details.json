@@ -1,0 +1,6 @@
+[
+  "Weaviate 1.38.2, self-hosted as a single Docker node on the benchmark host.",
+  "The collection disables vectorization and indexes one text property for native BM25F.",
+  "Word tokenization and the English stop-word preset approximate Antfly's fixed analyzer.",
+  "Term, OR, and AND queries are timed; the BM25 surface has no exact phrase-query operator."
+]

@@ -1,266 +1,101 @@
 {
   "command": "VALIDATE_TOP_10",
   "comparisons": {
-    "elasticsearch-8.15.3": {
-      "by_primary_tag": {
-        "intersection": {
-          "exact_match_count_rate": 0.22,
-          "mean_overlap_at_10": 0.650339947089947,
-          "median_engine_to_reference_count_ratio": 0.8
-        },
-        "phrase": {
-          "exact_match_count_rate": 0.5633333333333334,
-          "mean_overlap_at_10": 0.5870886243386244,
-          "median_engine_to_reference_count_ratio": 0.9777777777777777
-        },
-        "term": {
-          "exact_match_count_rate": 0.0,
-          "mean_overlap_at_10": 0.0,
-          "median_engine_to_reference_count_ratio": null
-        },
-        "union": {
-          "exact_match_count_rate": 0.019933554817275746,
-          "mean_overlap_at_10": 0.7043189368770764,
-          "median_engine_to_reference_count_ratio": 0.9032260920402978
-        }
-      },
-      "count_mismatch_examples": [
-        {
-          "engine_count": 212103,
-          "query": "the",
-          "reference_count": 0,
-          "tags": [
-            "term"
-          ]
-        },
-        {
-          "engine_count": 577,
-          "query": "griffith observatory",
-          "reference_count": 675,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 4,
-          "query": "+bowel +obstruction",
-          "reference_count": 5,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 1,
-          "query": "\"bowel obstruction\"",
-          "reference_count": 2,
-          "tags": [
-            "phrase",
-            "phrase:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 146,
-          "query": "bowel obstruction",
-          "reference_count": 304,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 4408,
-          "query": "vicenza italy",
-          "reference_count": 4412,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 23,
-          "query": "+digital +scanning",
-          "reference_count": 56,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 0,
-          "query": "\"digital scanning\"",
-          "reference_count": 1,
-          "tags": [
-            "phrase",
-            "phrase:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 2063,
-          "query": "digital scanning",
-          "reference_count": 2687,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 9,
-          "query": "+plus +size +clothing",
-          "reference_count": 15,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_3"
-          ]
-        }
-      ],
-      "exact_match_counts": 241,
-      "exact_rankings": 148,
-      "mean_overlap_at_10": 0.646594868546088,
-      "median_overlap_at_10": 0.8,
-      "queries": 902,
+    "chroma-self-hosted": {
+      "classes": {},
+      "comparable_exact_counts": 0,
+      "exact_match_counts": 0,
       "reference": "antfly-0.2"
     },
-    "tantivy-0.26": {
-      "by_primary_tag": {
+    "elasticsearch-8.15.3": {
+      "classes": {
         "intersection": {
-          "exact_match_count_rate": 0.22,
-          "mean_overlap_at_10": 0.6513399470899471,
-          "median_engine_to_reference_count_ratio": 0.8
+          "mean_overlap_at_10": 0.6583399470899471,
+          "median_overlap_at_10": 0.8500000000000001,
+          "queries": 300
         },
         "phrase": {
-          "exact_match_count_rate": 0.5633333333333334,
-          "mean_overlap_at_10": 0.5884219576719577,
-          "median_engine_to_reference_count_ratio": 0.9777777777777777
+          "mean_overlap_at_10": 0.5829814814814814,
+          "median_overlap_at_10": 0.8285714285714285,
+          "queries": 300
         },
         "term": {
-          "exact_match_count_rate": 0.0,
           "mean_overlap_at_10": 0.0,
-          "median_engine_to_reference_count_ratio": null
+          "median_overlap_at_10": 0.0,
+          "queries": 1
         },
         "union": {
-          "exact_match_count_rate": 0.019933554817275746,
-          "mean_overlap_at_10": 0.706312292358804,
-          "median_engine_to_reference_count_ratio": 0.9032260920402978
+          "mean_overlap_at_10": 0.7162790697674418,
+          "median_overlap_at_10": 0.8,
+          "queries": 301
         }
       },
-      "count_mismatch_examples": [
-        {
-          "engine_count": 212103,
-          "query": "the",
-          "reference_count": 0,
-          "tags": [
-            "term"
-          ]
+      "comparable_exact_counts": 902,
+      "exact_match_counts": 290,
+      "reference": "antfly-0.2"
+    },
+    "milvus-2.5.8": {
+      "classes": {},
+      "comparable_exact_counts": 0,
+      "exact_match_counts": 0,
+      "reference": "antfly-0.2"
+    },
+    "postgresql-16": {
+      "classes": {
+        "intersection": {
+          "mean_overlap_at_10": 0.5014444444444445,
+          "median_overlap_at_10": 0.5,
+          "queries": 300
         },
-        {
-          "engine_count": 577,
-          "query": "griffith observatory",
-          "reference_count": 675,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
+        "phrase": {
+          "mean_overlap_at_10": 0.6287539682539683,
+          "median_overlap_at_10": 1.0,
+          "queries": 300
         },
-        {
-          "engine_count": 4,
-          "query": "+bowel +obstruction",
-          "reference_count": 5,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_2"
-          ]
+        "term": {
+          "mean_overlap_at_10": 0.0,
+          "median_overlap_at_10": 0.0,
+          "queries": 1
         },
-        {
-          "engine_count": 1,
-          "query": "\"bowel obstruction\"",
-          "reference_count": 2,
-          "tags": [
-            "phrase",
-            "phrase:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 146,
-          "query": "bowel obstruction",
-          "reference_count": 304,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 4408,
-          "query": "vicenza italy",
-          "reference_count": 4412,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 23,
-          "query": "+digital +scanning",
-          "reference_count": 56,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 0,
-          "query": "\"digital scanning\"",
-          "reference_count": 1,
-          "tags": [
-            "phrase",
-            "phrase:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 2063,
-          "query": "digital scanning",
-          "reference_count": 2687,
-          "tags": [
-            "union",
-            "global",
-            "union:num_tokens_2"
-          ]
-        },
-        {
-          "engine_count": 9,
-          "query": "+plus +size +clothing",
-          "reference_count": 15,
-          "tags": [
-            "intersection",
-            "global",
-            "intersection:num_tokens_3"
-          ]
+        "union": {
+          "mean_overlap_at_10": 0.07541528239202658,
+          "median_overlap_at_10": 0.0,
+          "queries": 301
         }
-      ],
-      "exact_match_counts": 241,
-      "exact_rankings": 144,
-      "mean_overlap_at_10": 0.6480361102312322,
-      "median_overlap_at_10": 0.8,
-      "queries": 902,
+      },
+      "comparable_exact_counts": 902,
+      "exact_match_counts": 703,
+      "reference": "antfly-0.2"
+    },
+    "weaviate-1.38.2": {
+      "classes": {
+        "intersection": {
+          "mean_overlap_at_10": 0.6520066137566137,
+          "median_overlap_at_10": 0.8,
+          "queries": 300
+        },
+        "term": {
+          "mean_overlap_at_10": 0.0,
+          "median_overlap_at_10": 0.0,
+          "queries": 1
+        },
+        "union": {
+          "mean_overlap_at_10": 0.7059800664451827,
+          "median_overlap_at_10": 0.8,
+          "queries": 301
+        }
+      },
+      "comparable_exact_counts": 0,
+      "exact_match_counts": 0,
       "reference": "antfly-0.2"
     }
   },
   "engines": [
     "antfly-0.2",
-    "tantivy-0.26",
-    "elasticsearch-8.15.3"
+    "elasticsearch-8.15.3",
+    "weaviate-1.38.2",
+    "postgresql-16",
+    "milvus-2.5.8",
+    "chroma-self-hosted"
   ]
 }

@@ -1,0 +1,8 @@
+{
+  "query_classes": {
+    "term": {"supported": false, "reason": "Milvus BM25 VARCHAR cannot represent 20 corpus documents above 65,535 bytes without truncation"},
+    "union": {"supported": false, "reason": "Milvus BM25 VARCHAR cannot represent 20 corpus documents above 65,535 bytes without truncation"},
+    "intersection": {"supported": false, "reason": "Milvus BM25 VARCHAR cannot represent 20 corpus documents above 65,535 bytes without truncation"},
+    "phrase": {"supported": false, "reason": "Milvus BM25 VARCHAR cannot represent 20 corpus documents above 65,535 bytes without truncation"}
+  }
+}
