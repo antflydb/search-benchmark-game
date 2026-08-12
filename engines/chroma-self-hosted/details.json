@@ -1,0 +1,5 @@
+[
+  "Chroma is retained visibly as a target competitor but is not timed in this full-text lane.",
+  "The self-hosted document text surface offers case-sensitive contains/regex filtering, not ranked lexical top-k retrieval.",
+  "Chroma's richer Search API is cloud-only and is excluded by the self-hosted-only benchmark policy."
+]

@@ -1,0 +1,8 @@
+{
+  "query_classes": {
+    "term": {"supported": false, "reason": "self-hosted Chroma has text containment filtering, not ranked lexical top-k"},
+    "union": {"supported": false, "reason": "self-hosted Chroma has text containment filtering, not ranked lexical top-k"},
+    "intersection": {"supported": false, "reason": "self-hosted Chroma has text containment filtering, not ranked lexical top-k"},
+    "phrase": {"supported": false, "reason": "self-hosted Chroma has text containment filtering, not ranked lexical top-k"}
+  }
+}

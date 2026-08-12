@@ -1,0 +1,6 @@
+[
+  "PostgreSQL 16 from the self-hosted pgvector image; pgvector is not involved in lexical execution.",
+  "Documents use a stored English tsvector with a GIN index and rank with ts_rank_cd.",
+  "The adapter translates term, OR, AND, and phrase classes to native tsquery expressions.",
+  "Timed queries return document IDs only over one persistent PostgreSQL connection per worker."
+]

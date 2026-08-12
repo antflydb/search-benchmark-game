@@ -1,0 +1,8 @@
+{
+  "query_classes": {
+    "term": {"supported": true},
+    "union": {"supported": true},
+    "intersection": {"supported": true},
+    "phrase": {"supported": false, "reason": "Weaviate BM25F does not expose an exact phrase-query operator"}
+  }
+}
