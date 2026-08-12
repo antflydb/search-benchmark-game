@@ -97,14 +97,48 @@ class AntflyClient:
     def create_table(self) -> None:
         table_path = f"{self.api_root}/tables/{self.table}"
         index_name = self.index_name
+        profile = env("SBG_ANALYZER_PROFILE", "product-default")
         try:
             self.request("DELETE", table_path)
         except Exception:
             pass
-        self.request("POST", table_path, {"num_shards": int(env("ANTFLY_SHARDS", "1"))})
+        table_body: dict[str, Any] = {"num_shards": int(env("ANTFLY_SHARDS", "1"))}
+        if profile == "canonical":
+            text_field = env("ANTFLY_TEXT_FIELD", "text")
+            table_body["schema"] = {
+                "default_type": "doc",
+                "document_schemas": {
+                    "doc": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                text_field: {
+                                    "type": "string",
+                                    "x-antfly-types": ["text"],
+                                    "x-antfly-analyzer": "simple",
+                                }
+                            },
+                            "additionalProperties": False,
+                        }
+                    }
+                },
+            }
+        self.request("POST", table_path, table_body)
+        if profile == "canonical":
+            # The table-created default index consumes the schema analyzer. The
+            # public create-index surface intentionally does not expose internal
+            # analysis_config, so do not silently fall back to the English index.
+            self.index_name = "full_text_index_v0"
+            return
+        analysis: dict[str, Any] = {}
         index_bodies = [
-            {"name": index_name, "type": "full_text"},
-            {"name": index_name, "type": "full_text", "field": env("ANTFLY_TEXT_FIELD", "text")},
+            {"name": index_name, "type": "full_text", **analysis},
+            {
+                "name": index_name,
+                "type": "full_text",
+                "field": env("ANTFLY_TEXT_FIELD", "text"),
+                **analysis,
+            },
         ]
         if self.api_root == "/api/v1":
             index_bodies.reverse()
@@ -139,6 +173,10 @@ class AntflyClient:
     def search(self, query: str, limit: int) -> Any:
         text_field = env("ANTFLY_TEXT_FIELD", "text")
         full_text_search = translate_query(query, text_field)
+        if env("SBG_ANALYZER_PROFILE", "product-default") == "canonical":
+            clause = full_text_search.get("match_phrase") or full_text_search.get("match")
+            if isinstance(clause, dict):
+                clause["analyzer"] = "simple"
         body = {
             "limit": limit,
             # Search Benchmark Game measures top-k collection, not stored-document
